@@ -19,6 +19,7 @@ __version__ = '0.1'
 
 
 import sys
+import glob
 import multiprocessing
 import pynotify
 
@@ -92,12 +93,17 @@ def get_settings():
 
     """
 
-    with open("/sys/class/power_supply/AC0/online") as f:
-        ac = int(f.read())
-        if ac:
-            state = "AC"
-        else:
-            state = "Battery"
+    for x in glob.glob("/sys/class/power_supply/*"):
+        try:
+            with open(x+"/online") as f:
+                ac = int(f.read())
+                if ac:
+                    state = "AC"
+                else:
+                    state = "Battery"
+            break
+        except:
+            pass
     with open(
         "/sys/devices/system/cpu/cpu{0}/cpufreq/scaling_governor".format(
             multiprocessing.cpu_count() - 1)) as f:
@@ -125,25 +131,31 @@ def show_notification(title, message):
 
 if __name__ == "__main__":
 
+    print get_settings()
     try:
         if sys.argv[1] == "-a" or sys.argv[1] == "--auto":
-            with open("/sys/class/power_supply/AC0/online") as f:
-                ac = int(f.read())
-                if ac:
-                    state = "AC"
-                    performance = PERFORMANCE_AC
-                    backlight = BACKLIGHT_AC
-                else:
-                    state = "Battery"
-                    performance = PERFORMANCE_BATTERY
-                    backlight = BACKLIGHT_BATTERY
-                print("State: {0}".format(state))
-                set_performance(performance, False)
-                set_backlight(backlight, False)
-                if POPUP_NOTIFICATIONS:
-                    state, performance, backlight = get_settings()
-                    show_notification("{0}".format(state),
-                           "{0}<br />{1}".format(performance, backlight))
+            for x in glob.glob("/sys/class/power_supply/*"):
+                try:
+                    with open(x+"/online") as f:
+                        ac = int(f.read())
+                        if ac:
+                            state = "AC"
+                            performance = PERFORMANCE_AC
+                            backlight = BACKLIGHT_AC
+                        else:
+                            state = "Battery"
+                            performance = PERFORMANCE_BATTERY
+                            backlight = BACKLIGHT_BATTERY
+                        print("State: {0}".format(state))
+                        set_performance(performance, False)
+                        set_backlight(backlight, False)
+                        if POPUP_NOTIFICATIONS:
+                            state, performance, backlight = get_settings()
+                            show_notification("{0}".format(state),
+                                   "{0}<br />{1}".format(performance, backlight))
+                    break
+                except:
+                    pass
         elif sys.argv[1] == "-b" or sys.argv[1] == "--backlight":
             if 0 <= int(sys.argv[2]) <= 15:
                 set_backlight(int(sys.argv[2]), POPUP_NOTIFICATIONS)
